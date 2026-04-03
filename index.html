@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Sand — Clocks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; font-family: 'DM Mono', monospace; padding: 16px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .card {
+    background: #16191f;
+    border: 1px solid #2a2d35;
+    border-radius: 10px;
+    padding: 16px 14px 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .city {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.green  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; animation: pulse 2s ease-in-out infinite; }
+  .status-dot.yellow { background: #eab308; box-shadow: 0 0 6px #eab30888; }
+  .status-dot.red    { background: #ef4444; box-shadow: 0 0 6px #ef444488; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .tz-badge { font-size: 10px; color: var(--accent); opacity: 0.8; letter-spacing: 0.06em; }
+
+  .time { font-size: 24px; font-weight: 500; color: #f0f0f0; letter-spacing: -0.02em; line-height: 1; margin-bottom: 4px; }
+  .date { font-size: 10px; color: #4b5563; letter-spacing: 0.04em; margin-bottom: 8px; }
+
+  .hours-bar {
+    width: 100%; height: 5px;
+    background: #1e2128;
+    border-radius: 3px;
+    overflow: visible;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .hours-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+
+  .now-marker {
+    position: absolute; top: -3px;
+    width: 2px; height: 11px;
+    background: #fff; border-radius: 1px;
+    transform: translateX(-50%); z-index: 2;
+  }
+
+  .status-label { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="grid" id="clocks"></div>
+<script>
+const WORK_START = 9, WORK_END = 17;
+const zones = [
+  { city: "Honolulu",        tz: "Pacific/Honolulu",                label: "HST", accent: "#38bdf8" },
+  { city: "Los Angeles",     tz: "America/Los_Angeles",             label: "PT",  accent: "#a78bfa" },
+  { city: "Denver",          tz: "America/Denver",                  label: "MT",  accent: "#34d399" },
+  { city: "Chicago",         tz: "America/Chicago",                 label: "CT",  accent: "#fb923c" },
+  { city: "Washington D.C.", tz: "America/New_York",                label: "ET",  accent: "#f472b6" },
+  { city: "Buenos Aires",    tz: "America/Argentina/Buenos_Aires",  label: "ART", accent: "#fbbf24" },
+];
+
+function getH(tz) {
+  const now = new Date();
+  const h = parseFloat(now.toLocaleString('en-US',{timeZone:tz,hour:'numeric',hour12:false}));
+  const m = parseFloat(now.toLocaleString('en-US',{timeZone:tz,minute:'numeric'}));
+  return (isNaN(h)?0:h) + m/60;
+}
+
+function statusFor(h) {
+  if (h>=WORK_START&&h<WORK_END) return {cls:'green',label:'Online'};
+  if ((h>=WORK_START-1&&h<WORK_START)||(h>=WORK_END&&h<WORK_END+1)) return {cls:'yellow',label:'Early / Late'};
+  return {cls:'red',label:'Offline'};
+}
+
+const grid = document.getElementById('clocks');
+zones.forEach(z => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.setProperty('--accent', z.accent);
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="city"><span class="status-dot" id="dot-${z.label}"></span>${z.city}</div>
+      <div class="tz-badge">${z.label}</div>
+    </div>
+    <div class="time" id="time-${z.label}">--:--:--</div>
+    <div class="date" id="date-${z.label}">---</div>
+    <div class="hours-bar">
+      <div class="hours-fill" id="fill-${z.label}" style="background:${z.accent}"></div>
+      <div class="now-marker" id="marker-${z.label}"></div>
+    </div>
+    <div class="status-label" id="slabel-${z.label}"></div>`;
+  grid.appendChild(card);
+});
+
+function update() {
+  const now = new Date();
+  zones.forEach(z => {
+    const h = getH(z.tz);
+    const s = statusFor(h);
+    document.getElementById('time-'+z.label).textContent = now.toLocaleTimeString('en-US',{timeZone:z.tz,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+    document.getElementById('date-'+z.label).textContent = now.toLocaleDateString('en-US',{timeZone:z.tz,weekday:'short',month:'short',day:'numeric'});
+    document.getElementById('dot-'+z.label).className = 'status-dot '+s.cls;
+    document.getElementById('slabel-'+z.label).textContent = s.label;
+    document.getElementById('slabel-'+z.label).style.color = s.cls==='green'?'#22c55e':s.cls==='yellow'?'#eab308':'#ef4444';
+    const wp=(WORK_START/24)*100, ww=((WORK_END-WORK_START)/24)*100;
+    const fill=document.getElementById('fill-'+z.label);
+    fill.style.left=wp+'%'; fill.style.width=ww+'%'; fill.style.opacity=s.cls==='red'?'0.2':'0.55';
+    const np=(h/24)*100;
+    document.getElementById('marker-'+z.label).style.left=np+'%';
+  });
+}
+update(); setInterval(update,1000);
+</script>
+</body>
+</html>

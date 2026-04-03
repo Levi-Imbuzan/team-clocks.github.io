@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Sand — Team Time Zones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f1117;
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── CLOCKS GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 14px;
+  }
+
+  .card {
+    background: #16191f;
+    border: 1px solid #2a2d35;
+    border-radius: 10px;
+    padding: 16px 14px 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .city {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.green  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; animation: pulse 2s ease-in-out infinite; }
+  .status-dot.yellow { background: #eab308; box-shadow: 0 0 6px #eab30888; }
+  .status-dot.red    { background: #ef4444; box-shadow: 0 0 6px #ef444488; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .tz-badge {
+    font-size: 10px;
+    color: var(--accent);
+    opacity: 0.8;
+    letter-spacing: 0.06em;
+  }
+
+  .time {
+    font-size: 24px;
+    font-weight: 500;
+    color: #f0f0f0;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .date {
+    font-size: 10px;
+    color: #4b5563;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+
+  .hours-bar {
+    width: 100%;
+    height: 5px;
+    background: #1e2128;
+    border-radius: 3px;
+    overflow: visible;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .hours-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 3px;
+  }
+
+  .now-marker {
+    position: absolute;
+    top: -3px;
+    width: 2px;
+    height: 11px;
+    background: #fff;
+    border-radius: 1px;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+
+  .status-label {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ── OVERLAP SECTION ── */
+  .overlap-section {
+    background: #16191f;
+    border: 1px solid #2a2d35;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4b5563;
+    margin-bottom: 14px;
+  }
+
+  .overlap-grid {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 5px 10px;
+    align-items: center;
+  }
+
+  .overlap-city-label {
+    font-size: 10px;
+    color: #6b7280;
+    letter-spacing: 0.04em;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .overlap-bar-track {
+    height: 18px;
+    background: #1e2128;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .overlap-work-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 4px;
+    opacity: 0.45;
+  }
+
+  .overlap-now-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: #fff;
+    opacity: 0.9;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+
+  /* hour label row */
+  .hour-label-row {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    margin-bottom: 2px;
+  }
+
+  .hour-label-row span {
+    font-size: 8.5px;
+    color: #374151;
+    letter-spacing: 0.02em;
+    text-align: left;
+  }
+
+  /* bottom hour label row */
+  .hour-label-row-bottom {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    margin-top: 3px;
+  }
+
+  .hour-label-row-bottom span {
+    font-size: 8.5px;
+    color: #374151;
+    letter-spacing: 0.02em;
+    text-align: left;
+  }
+
+  /* best windows */
+  .best-windows {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #1e2128;
+  }
+
+  .best-windows-title {
+    font-size: 10px;
+    color: #4b5563;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+
+  .window-pill {
+    display: inline-block;
+    background: #22c55e14;
+    border: 1px solid #22c55e44;
+    color: #22c55e;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin: 2px 4px 2px 0;
+    letter-spacing: 0.04em;
+  }
+
+  .window-pill.none {
+    background: #ef444414;
+    border-color: #ef444444;
+    color: #ef4444;
+  }
+
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid" id="clocks"></div>
+<div class="overlap-section" id="overlap-section"></div>
+
+<script>
+const WORK_START = 9;
+const WORK_END   = 17; // 9am–5pm
+
+const zones = [
+  { city: "Honolulu",        short: "Honolulu",    tz: "Pacific/Honolulu",                label: "HST",  accent: "#38bdf8", excludeOverlap: true },
+  { city: "Los Angeles",     short: "Los Angeles", tz: "America/Los_Angeles",             label: "PT",   accent: "#a78bfa" },
+  { city: "Denver",          short: "Denver",      tz: "America/Denver",                  label: "MT",   accent: "#34d399" },
+  { city: "Chicago",         short: "Chicago",     tz: "America/Chicago",                 label: "CT",   accent: "#fb923c" },
+  { city: "Washington D.C.", short: "Wash. D.C.",  tz: "America/New_York",                label: "ET",   accent: "#f472b6" },
+  { city: "Buenos Aires",    short: "Buenos Aires",tz: "America/Argentina/Buenos_Aires",  label: "ART",  accent: "#fbbf24" },
+];
+
+// ── helpers ──
+function getLocalDecimalHour(tz) {
+  const now = new Date();
+  const h = parseFloat(now.toLocaleString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }));
+  const m = parseFloat(now.toLocaleString('en-US', { timeZone: tz, minute: 'numeric' }));
+  return (isNaN(h) ? 0 : h) + m / 60;
+}
+
+function statusFor(h) {
+  if (h >= WORK_START && h < WORK_END)              return { cls: 'green',  label: 'Online' };
+  if ((h >= WORK_START - 1 && h < WORK_START) ||
+      (h >= WORK_END     && h < WORK_END + 1))      return { cls: 'yellow', label: 'Early / Late' };
+  return { cls: 'red', label: 'Offline' };
+}
+
+function fmtHour(h) {
+  if (h === 0 || h === 24) return '12am';
+  if (h === 12)            return '12pm';
+  return h < 12 ? `${h}am` : `${h - 12}pm`;
+}
+
+// ── BUILD CLOCKS ──
+const grid = document.getElementById('clocks');
+zones.forEach(z => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.setProperty('--accent', z.accent);
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="city">
+        <span class="status-dot" id="dot-${z.label}"></span>
+        ${z.city}
+      </div>
+      <div class="tz-badge">${z.label}</div>
+    </div>
+    <div class="time" id="time-${z.label}">--:--:--</div>
+    <div class="date" id="date-${z.label}">---</div>
+    <div class="hours-bar">
+      <div class="hours-fill" id="fill-${z.label}" style="background:${z.accent}"></div>
+      <div class="now-marker" id="marker-${z.label}"></div>
+    </div>
+    <div class="status-label" id="slabel-${z.label}"></div>
+  `;
+  grid.appendChild(card);
+});
+
+// ── BUILD OVERLAP SECTION ──
+function buildOverlap() {
+  const sec = document.getElementById('overlap-section');
+
+  // hour labels every 2hrs: 0,2,4,6,8,10,12,14,16,18,20,22
+  const hourLabels = [0,2,4,6,8,10,12,14,16,18,20,22];
+
+  let labelHTML = '';
+  hourLabels.forEach(h => { labelHTML += `<span>${fmtHour(h)}</span>`; });
+
+  let barsHTML = '';
+  zones.forEach(z => {
+    const workPct   = (WORK_START / 24) * 100;
+    const workWidth = ((WORK_END - WORK_START) / 24) * 100;
+    const excludeNote = z.excludeOverlap ? '<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:8px;color:#6b7280;letter-spacing:0.04em;z-index:3;">EXCL.</span>' : '';
+    barsHTML += `
+      <div class="overlap-city-label">${z.short}</div>
+      <div class="overlap-bar-track" style="position:relative;">${excludeNote}
+        <div class="overlap-work-fill" id="ofill-${z.label}" style="left:${workPct}%;width:${workWidth}%;background:${z.accent}"></div>
+        <div class="overlap-now-line" id="onow-${z.label}"></div>
+      </div>`;
+  });
+
+  sec.innerHTML = `
+    <div class="section-title">Workday Overlap — 9am–5pm per city</div>
+    <div class="overlap-grid">
+      <div></div>
+      <div class="hour-label-row">${labelHTML}</div>
+      ${barsHTML}
+      <div></div>
+      <div class="hour-label-row-bottom">${labelHTML}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid #1e2128;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:9px;color:#4b5563;letter-spacing:0.05em;text-transform:uppercase;">
+        <div style="width:2px;height:14px;background:#fff;border-radius:1px;opacity:0.9;"></div>
+        Current local time
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:9px;color:#4b5563;letter-spacing:0.05em;text-transform:uppercase;">
+        <div style="width:14px;height:8px;background:#6b7280;border-radius:2px;opacity:0.45;"></div>
+        9am – 5pm workday
+      </div>
+      <div style="font-size:9px;color:#374151;letter-spacing:0.05em;text-transform:uppercase;">Excl. = excluded from meeting window calc</div>
+    </div>
+    <div class="best-windows">
+      <div class="best-windows-title">Best meeting windows (LA · Denver · Chicago · DC · Buenos Aires)</div>
+      <div id="best-pills"></div>
+    </div>`;
+}
+
+buildOverlap();
+
+// ── BEST WINDOWS ──
+function computeBestWindows() {
+  // step through every 30-min slot of the day in ET reference
+  // check if all zones are within work hours at that moment
+  const slots = [];
+  const base = new Date();
+  base.setSeconds(0, 0);
+
+  for (let slot = 0; slot < 48; slot++) {
+    const t = new Date(base);
+    t.setHours(0, slot * 30, 0, 0);
+    let allOn = true;
+    zones.forEach(z => {
+      if (z.excludeOverlap) return;
+      const hStr = t.toLocaleString('en-US', { timeZone: z.tz, hour: 'numeric', hour12: false });
+      const mStr = t.toLocaleString('en-US', { timeZone: z.tz, minute: 'numeric' });
+      const h = parseFloat(hStr) + parseFloat(mStr) / 60;
+      if (h < WORK_START || h >= WORK_END) allOn = false;
+    });
+    if (allOn) slots.push(slot);
+  }
+
+  // group consecutive slots into ranges
+  if (slots.length === 0) return [];
+  const groups = [];
+  let startSlot = slots[0], prevSlot = slots[0];
+  for (let i = 1; i < slots.length; i++) {
+    if (slots[i] === prevSlot + 1) { prevSlot = slots[i]; }
+    else {
+      groups.push([startSlot, prevSlot]);
+      startSlot = prevSlot = slots[i];
+    }
+  }
+  groups.push([startSlot, prevSlot]);
+  return groups;
+}
+
+function slotToET(slot) {
+  const base = new Date();
+  base.setHours(0, slot * 30, 0, 0);
+  return base.toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric', minute: '2-digit', hour12: true
+  });
+}
+
+// ── UPDATE LOOP ──
+function update() {
+  const now = new Date();
+
+  zones.forEach(z => {
+    const h      = getLocalDecimalHour(z.tz);
+    const status = statusFor(h);
+
+    const timeEl   = document.getElementById('time-'   + z.label);
+    const dateEl   = document.getElementById('date-'   + z.label);
+    const dotEl    = document.getElementById('dot-'    + z.label);
+    const fillEl   = document.getElementById('fill-'   + z.label);
+    const markerEl = document.getElementById('marker-' + z.label);
+    const slabelEl = document.getElementById('slabel-' + z.label);
+    const onowEl   = document.getElementById('onow-'   + z.label);
+
+    if (!timeEl) return;
+
+    // clock display
+    timeEl.textContent = now.toLocaleTimeString('en-US', {
+      timeZone: z.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    });
+    dateEl.textContent = now.toLocaleDateString('en-US', {
+      timeZone: z.tz, weekday: 'short', month: 'short', day: 'numeric'
+    });
+
+    // status
+    dotEl.className = 'status-dot ' + status.cls;
+    slabelEl.textContent = status.label;
+    slabelEl.style.color = status.cls === 'green' ? '#22c55e' : status.cls === 'yellow' ? '#eab308' : '#ef4444';
+
+    // mini bar — workday band + now marker
+    const workPct   = (WORK_START / 24) * 100;
+    const workWidth = ((WORK_END - WORK_START) / 24) * 100;
+    fillEl.style.left    = workPct + '%';
+    fillEl.style.width   = workWidth + '%';
+    fillEl.style.opacity = status.cls === 'red' ? '0.2' : '0.55';
+
+    const nowPct = (h / 24) * 100;
+    markerEl.style.left = nowPct + '%';
+
+    // overlap chart now line
+    if (onowEl) onowEl.style.left = nowPct + '%';
+  });
+
+  // best windows pills (recompute every minute)
+  const pillsEl = document.getElementById('best-pills');
+  if (pillsEl) {
+    const groups = computeBestWindows();
+    if (groups.length === 0) {
+      pillsEl.innerHTML = `<span class="window-pill none">No full overlap window today</span>`;
+    } else {
+      pillsEl.innerHTML = groups.map(([s, e]) =>
+        `<span class="window-pill">${slotToET(s)} – ${slotToET(e + 1)} ET</span>`
+      ).join('');
+    }
+  }
+}
+
+update();
+setInterval(update, 1000);
+</script>
+</body>
+</html>
